@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/nikshrma/heimdall/internal/config"
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
 
@@ -13,7 +14,12 @@ func main() {
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed to read config file")
 	}
-	log.Info().Interface("config", cfg).Msg("loaded config")
+	level, err := zerolog.ParseLevel(cfg.Log.Level)
+	if err != nil {
+		log.Fatal().Err(err).Msg("invalid log level")
+	}
+	zerolog.SetGlobalLevel(level)
+	log.Debug().Interface("config", cfg).Msg("loaded config")
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 	})

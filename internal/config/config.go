@@ -14,8 +14,12 @@ type RouteConfig struct {
 	StripPrefix bool     `yaml:"stripPrefix"`
 	Backends    []string `yaml:"backends"`
 }
+type LogConfig struct {
+	Level string `yaml:"level"`
+}
 
 type Config struct {
+	Log    LogConfig     `yaml:"log"`
 	Routes []RouteConfig `yaml:"routes"`
 }
 
