@@ -2,49 +2,46 @@
 package router
 
 import (
-	"net/http/httputil"
-	"net/url"
-
+	"github.com/nikshrma/heimdall/internal/backend"
 	"github.com/nikshrma/heimdall/internal/balancer"
 	"github.com/nikshrma/heimdall/internal/config"
-	"github.com/rs/zerolog/log"
 )
 
-type Backend struct {
-	URL   *url.URL
-	Proxy *httputil.ReverseProxy
-}
-type Routes struct {
+type Route struct {
 	Path        string
 	Methods     []string
 	StripPrefix bool
-	bala        balancer.Balancer
-	backends    []Backend
+	Balancer    balancer.Balancer
+	Backends    []*backend.Backend
 }
 
-func buildBackends(backends []string) []*Backend {
-	var runtimeBackends []*Backend
+func buildBackends(backends []string) ([]*backend.Backend, error) {
+	var runtimeBackends []*backend.Backend
 	for _, be := range backends {
-		target, err := url.Parse(be)
+		b, err := backend.New(be)
 		if err != nil {
-			log.Fatal().Err(err).Msg("invalid backend url")
+			return nil, err
 		}
-		proxy := &httputil.ReverseProxy{
-			Rewrite: func(pr *httputil.ProxyRequest) {
-				pr.SetURL(target)
-				pr.SetXForwarded()
-			},
+		runtimeBackends = append(runtimeBackends, b)
+	}
+	return runtimeBackends, nil
+}
+
+func Build(cfg config.Config) ([]*Route, error) {
+	var runtimeRoutes []*Route
+	for _, rc := range cfg.Routes {
+		backends, err := buildBackends(rc.Backends)
+		if err != nil {
+			return nil, err
 		}
-		runtimeBackends = append(runtimeBackends, &Backend{
-			URL:   target,
-			Proxy: proxy,
+
+		runtimeRoutes = append(runtimeRoutes, &Route{
+			Path:        rc.Path,
+			Methods:     rc.Methods,
+			StripPrefix: rc.StripPrefix,
+			Backends:    backends,
+			Balancer:    balancer.NewRoundRobin(backends),
 		})
 	}
-	return runtimeBackends
-}
-
-func Build(cfg config.Config) ([]*Routes, error) {
-	for _, rc := range cfg.Routes {
-		backends := buildBackends(rc.Backends)
-	}
+	return runtimeRoutes, nil
 }
