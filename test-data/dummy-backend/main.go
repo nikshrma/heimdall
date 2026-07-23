@@ -1,5 +1,5 @@
 // Package dummybakcend here is the dummy backend used to test and debug HEIMDALL
-package dummybackend
+package main
 
 import (
 	"encoding/json"
