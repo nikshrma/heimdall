@@ -9,13 +9,13 @@ COPY . .
 
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
   go build -ldflags="-s -w" \
-  -o /dummy-backend \
-  ./test-data/dummy-backend
+  -o /heimdall \
+  ./cmd/heimdall
 
 FROM scratch
 
-COPY --from=builder /dummy-backend /dummy-backend
+COPY --from=builder /heimdall /heimdall
 
 EXPOSE 8080
 
-ENTRYPOINT ["/dummy-backend"]
+ENTRYPOINT ["/heimdall"]
