@@ -1,0 +1,46 @@
+services:
+  im1:
+    image: dummy-heimdall-backend
+    environment:
+      NAME: "backend1"
+      PORT: "3001"
+      ENDPOINT: "POST /"
+  im2:
+    image: dummy-heimdall-backend
+    environment:
+      NAME: "backend2"
+      PORT: "3002"
+      ENDPOINT: "POST /"
+  im3:
+    image: dummy-heimdall-backend
+    environment:
+      NAME: "backend3"
+      PORT: "3003"
+      ENDPOINT: "POST /"
+  im4:
+    image: dummy-heimdall-backend
+    environment:
+      NAME: "backend4"
+      PORT: "3004"
+      ENDPOINT: "GET /contacts"
+  im5:
+    image: dummy-heimdall-backend
+    environment:
+      NAME: "backend5"
+      PORT: "3005"
+      ENDPOINT: "GET /contacts"
+  heimdall:
+    image: heimdall
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    ports:
+      - 8080:8080
+    volumes:
+      - ../configs:/configs:ro
+    depends_on:
+      - im1
+      - im2
+      - im3
+      - im4
+      - im5
