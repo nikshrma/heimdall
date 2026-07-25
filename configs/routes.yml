@@ -3,9 +3,16 @@ log:
 routes:
   - path: /users
     methods:
-      - GET
       - POST
     stripPrefix: true
     backends:
-      - http://localhost:5001
-      - http://localhost:5002
+      - http://im1:3001
+      - http://im2:3002
+      - http://im3:3003
+  - path: /contacts
+    methods:
+      - GET
+    stripPrefix: false
+    backends:
+      - http://im4:3004
+      - http://im5:3005
