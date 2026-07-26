@@ -32,6 +32,7 @@ func Load(path string) (*Config, error) {
 	var cfg Config
 	if err := yaml.Unmarshal(content, &cfg); err != nil {
 		log.Fatal().Err(err).Msg("failed to read config file")
+		return nil, err
 	}
 	return &cfg, nil
 }
