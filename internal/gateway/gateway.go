@@ -23,21 +23,29 @@ func (g *Gateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	route, err := router.Match(g.routes, r)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusMethodNotAllowed)
+		return
 	}
 	if route == nil {
+		log.Debug().Msg("gateway returned 404")
 		http.NotFound(w, r)
+		return
 	}
+	log.Debug().
+		Bool("route_nil", route == nil).
+		Bool("balancer_nil", route != nil && route.Balancer == nil).
+		Msg("debug")
 	b := route.Balancer.Next()
 	if b == nil {
 		http.Error(w, err.Error(), http.StatusBadGateway)
+		return
 	}
-	if route.StripPrefix == true {
+	if route.StripPrefix {
 		r.URL.Path = strings.TrimPrefix(r.URL.Path, route.Path)
 		if r.URL.Path == "" {
 			r.URL.Path = "/"
 		}
 	}
-	log.Info().
+	log.Debug().
 		Str("url", r.URL.Path).
 		Str("backend", b.URL.String()).
 		Msg("dispatching request")
