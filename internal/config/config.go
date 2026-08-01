@@ -4,7 +4,6 @@ package config
 import (
 	"os"
 
-	"github.com/rs/zerolog/log"
 	"gopkg.in/yaml.v3"
 )
 
@@ -26,12 +25,10 @@ type Config struct {
 func Load(path string) (*Config, error) {
 	content, err := os.ReadFile(path)
 	if err != nil {
-		log.Fatal().Str("path", path).Err(err).Msg("failed to read config file")
 		return nil, err
 	}
 	var cfg Config
 	if err := yaml.Unmarshal(content, &cfg); err != nil {
-		log.Fatal().Err(err).Msg("failed to read config file")
 		return nil, err
 	}
 	return &cfg, nil
