@@ -39,6 +39,10 @@ func main() {
 			Timestamp: time.Now().Format(time.RFC3339),
 		})
 	})
+	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("OK"))
+	})
 	log.Printf("%s listening on :%s (%s)", name, port, endpoint)
 	http.ListenAndServe(":"+port, mux)
 }
