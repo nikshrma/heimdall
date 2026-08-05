@@ -36,7 +36,7 @@ func (g *Gateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		Msg("debug")
 	b := route.Balancer.Next()
 	if b == nil {
-		http.Error(w, err.Error(), http.StatusBadGateway)
+		http.Error(w, "bad gateway", http.StatusBadGateway)
 		return
 	}
 	if route.StripPrefix {
