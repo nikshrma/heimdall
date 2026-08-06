@@ -12,6 +12,24 @@ var healthClient = &http.Client{
 	Timeout: 3 * time.Second,
 }
 
+func StartPolling(b *backend.Backend) {
+	defer b.Polling.Store(false)
+	ticker := time.NewTicker(5 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		<-ticker.C
+		if health.CheckHealth(b) {
+			MarkSuccess(b)
+			if IsHealthy(b) {
+				return
+			}
+		} else {
+			MarkSuccess(b)
+		}
+	}
+}
+
 func CheckHealth(b *backend.Backend) bool {
 	url := b.URL.String() + "/health"
 	req, err := http.NewRequest(http.MethodGet, url, nil)
