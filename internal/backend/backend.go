@@ -2,22 +2,22 @@
 package backend
 
 import (
+	"net/http"
 	"net/http/httputil"
 	"net/url"
-	"sync"
 	"sync/atomic"
 
 	"github.com/nikshrma/heimdall/internal/health"
+	"github.com/rs/zerolog/log"
 )
 
 type Backend struct {
-	URL   *url.URL
+	url   *url.URL
 	Proxy *httputil.ReverseProxy
 
-	mu      sync.RWMutex
 	polling atomic.Bool
 
-	healthy      bool
+	healthy      atomic.Bool
 	failureCount atomic.Int32
 	successCount atomic.Int32
 }
@@ -33,34 +33,48 @@ func New(be string) (*Backend, error) {
 			pr.SetXForwarded()
 		},
 	}
-	return &Backend{
+	b := &Backend{
 		Proxy: proxy,
-		URL:   target,
-	}, nil
+		url:   target,
+	}
+	proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
+		b.MarkFailure()
+		w.WriteHeader(http.StatusBadGateway)
+	}
+	b.healthy.Store(true)
+	return b, nil
+}
+func (b *Backend) URL() *url.URL { return b.url }
+
+func (b *Backend) IsHealthy() bool {
+	return b.healthy.Load()
 }
 
-func IsHealthy(b *Backend) bool {
-	b.mu.RLock()
-	defer b.mu.RUnlock()
-	return b.healthy
-}
-
-func MarkSuccess(b *Backend) {
+func (b *Backend) MarkSuccess() {
 	b.failureCount.Store(0)
 	b.successCount.Add(1)
 	if b.successCount.Load() >= 3 {
-		b.healthy = true
+		b.healthy.Store(true)
+		log.Info().
+			Str("backend", b.URL().String()).
+			Msg("backend marked healthy")
 	}
 }
 
-func MarkFailure(b *Backend) {
+func (b *Backend) MarkFailure() {
 	b.successCount.Store(0)
 	b.failureCount.Add(1)
 	if b.failureCount.Load() >= 3 {
-		b.healthy = false
+		b.healthy.Store(false)
+		log.Info().
+			Str("backend", b.URL().String()).
+			Msg("backend marked unhealthy")
 		if b.polling.CompareAndSwap(false, true) {
 			go health.StartPolling(b)
 		}
-		defer b.polling.Store(false)
 	}
+}
+
+func (b *Backend) StopPolling() {
+	b.polling.Store(false)
 }

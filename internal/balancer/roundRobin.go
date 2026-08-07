@@ -21,6 +21,12 @@ func (rr *roundRobin) Next() *backend.Backend {
 	if len(rr.backends) == 0 {
 		return nil
 	}
-	idx := rr.counter.Add(1) - 1
-	return rr.backends[idx%uint64(len(rr.backends))]
+	for i := 0; i < len(rr.backends); i++ {
+		idx := rr.counter.Add(1) - 1
+		ind := idx % uint64(len(rr.backends))
+		if rr.backends[ind].IsHealthy() {
+			return rr.backends[ind]
+		}
+	}
+	return nil
 }
