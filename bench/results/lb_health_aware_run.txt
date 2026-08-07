@@ -1,0 +1,36 @@
+ █ THRESHOLDS
+    request_errors
+    ✓ 'rate>=0' rate=0.00%
+
+
+  █ TOTAL RESULTS
+    checks_total.......: 520216 8670.164359/s
+    checks_succeeded...: 99.99% 520210 out of 520216
+    checks_failed......: 0.00%  6 out of 520216
+    ✗ status is 200
+      ↳  99% — ✓ 520210 / ✗ 6
+
+    CUSTOM
+    backend1_hits..................: 239010 3983.452995/s
+    backend2_hits..................: 239010 3983.452995/s
+    backend3_hits..................: 42190  703.158369/s
+    request_errors.................: 0.00%  6 out of 520216
+
+    HTTP
+    http_req_duration..............: avg=1.12ms min=187µs    med=797µs    max=17.28ms p(90)=2.27ms p(95)=2.71ms
+      { expected_response:true }...: avg=1.12ms min=187µs    med=797µs    max=17.28ms p(90)=2.27ms p(95)=2.71ms
+    http_req_failed................: 0.00%  6 out of 520216
+    http_reqs......................: 520216 8670.164359/s
+
+    EXECUTION
+    iteration_duration.............: avg=1.15ms min=206.79µs med=826.75µs max=17.34ms p(90)=2.3ms  p(95)=2.74ms
+    iterations.....................: 520216 8670.164359/s
+    vus............................: 10     min=10          max=10
+    vus_max........................: 10     min=10          max=10
+
+    NETWORK
+    data_received..................: 99 MB  1.6 MB/s
+    data_sent......................: 49 MB  824 kB/s
+
+running (1m00.0s), 00/10 VUs, 520216 complete and 0 interrupted iterations
+sustained_load ✓ [==============================] 10 VUs  1m0s
