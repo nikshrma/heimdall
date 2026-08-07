@@ -47,7 +47,7 @@ func (g *Gateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	log.Debug().
 		Str("url", r.URL.Path).
-		Str("backend", b.URL.String()).
+		Str("backend", b.URL().String()).
 		Msg("dispatching request")
 	b.Proxy.ServeHTTP(w, r)
 }
