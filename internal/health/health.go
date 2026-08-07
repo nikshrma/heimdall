@@ -3,35 +3,45 @@ package health
 
 import (
 	"net/http"
+	"net/url"
 	"time"
-
-	"github.com/nikshrma/heimdall/internal/backend"
 )
+
+type Checker interface {
+	URL() *url.URL
+	MarkSuccess()
+	MarkFailure()
+	IsHealthy() bool
+	StopPolling()
+}
 
 var healthClient = &http.Client{
 	Timeout: 3 * time.Second,
 }
 
-func StartPolling(b *backend.Backend) {
-	defer b.Polling.Store(false)
+func StartPolling(b Checker) {
+	defer b.StopPolling()
 	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()
 
 	for {
 		<-ticker.C
-		if health.CheckHealth(b) {
-			MarkSuccess(b)
-			if IsHealthy(b) {
+		if b.IsHealthy() {
+			return
+		}
+		if CheckHealth(b) {
+			b.MarkSuccess()
+			if b.IsHealthy() {
 				return
 			}
 		} else {
-			MarkSuccess(b)
+			b.MarkFailure()
 		}
 	}
 }
 
-func CheckHealth(b *backend.Backend) bool {
-	url := b.URL.String() + "/health"
+func CheckHealth(b Checker) bool {
+	url := b.URL().String() + "/health"
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		return false
