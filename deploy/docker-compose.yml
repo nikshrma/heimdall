@@ -11,6 +11,7 @@ services:
       NAME: "backend2"
       PORT: "3002"
       ENDPOINT: "POST /"
+      DELAY_MS: 3200
   im3:
     image: dummy-heimdall-backend
     environment:
