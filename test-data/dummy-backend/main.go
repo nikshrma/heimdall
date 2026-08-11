@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 )
 
@@ -27,11 +28,15 @@ func main() {
 	name := getenv("NAME", "Backend")
 	port := getenv("PORT", "8080")
 	endpoint := getenv("ENDPOINT", "/")
+	delayMS, _ := strconv.Atoi(getenv("DELAY_MS", "0"))
 
 	mux := http.NewServeMux()
 	mux.HandleFunc(endpoint, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
+		if delayMS > 0 {
+			time.Sleep(time.Duration(delayMS) * time.Millisecond)
+		}
 		json.NewEncoder(w).Encode(Response{
 			Name:      name,
 			Path:      r.URL.Path,
