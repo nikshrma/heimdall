@@ -8,6 +8,8 @@ import (
 	"net/url"
 	"sync/atomic"
 	"time"
+
+	"github.com/rs/zerolog/log"
 )
 
 type State int32
@@ -97,6 +99,9 @@ func (b *Backend) MarkFailure() {
 	case int32(Closed):
 		b.failureCount.Add(1)
 		if b.failureCount.Load() >= 3 {
+			log.Info().
+				Str("backend", b.URL().String()).
+				Msg("backend marked open")
 			b.trip()
 		}
 	case int32(HalfOpen):
