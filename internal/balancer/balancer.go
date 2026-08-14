@@ -6,5 +6,5 @@ import (
 )
 
 type Balancer interface {
-	Next() *backend.Backend
+	Next(excluded map[*backend.Backend]struct{}) *backend.Backend
 }

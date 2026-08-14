@@ -17,16 +17,20 @@ func NewRoundRobin(backends []*backend.Backend) Balancer {
 	}
 }
 
-func (rr *roundRobin) Next() *backend.Backend {
+func (rr *roundRobin) Next(excluded map[*backend.Backend]struct{}) *backend.Backend {
 	if len(rr.backends) == 0 {
 		return nil
 	}
 	for i := 0; i < len(rr.backends); i++ {
 		idx := rr.counter.Add(1) - 1
 		ind := idx % uint64(len(rr.backends))
-		if rr.backends[ind].AllowRequest() {
-			return rr.backends[ind]
+		if _, ok := excluded[rr.backends[ind]]; ok {
+			continue
 		}
+		if !rr.backends[ind].AllowRequest() {
+			continue
+		}
+		return rr.backends[ind]
 	}
 	return nil
 }
