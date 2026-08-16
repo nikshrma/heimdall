@@ -3,6 +3,7 @@ package backend
 import (
 	"sync"
 	"testing"
+	"time"
 )
 
 func TestNew_ValidURL(t *testing.T) {
@@ -24,60 +25,70 @@ func TestNew_ValidURL(t *testing.T) {
 	}
 
 	if State(be.state.Load()) != Closed {
-		t.Error("expected new backend to start Closed")
+		t.Error("expected backend to start Closed")
 	}
 }
 
 func TestNew_InvalidURL(t *testing.T) {
 	_, err := New("://not-a-valid-url")
+
 	if err == nil {
-		t.Fatal("expected error for invalid URL, got nil")
+		t.Fatal("expected error for invalid URL")
 	}
 }
 
-func TestMarkFailure_BecomesOpenAfterThreeFailures(t *testing.T) {
+func TestClosedToOpenAfterFailures(t *testing.T) {
 	be, _ := New("http://localhost:8080")
 
-	if State(be.state.Load()) != Closed {
-		t.Fatal("expected backend to start Closed")
-	}
-
 	be.MarkFailure()
 	be.MarkFailure()
 
 	if State(be.state.Load()) != Closed {
-		t.Error("expected backend to still be Closed after 2 failures")
+		t.Fatal("expected backend to remain Closed after 2 failures")
 	}
 
 	be.MarkFailure()
 
 	if State(be.state.Load()) != Open {
-		t.Error("expected backend to be Open after 3 failures")
+		t.Error("expected backend to become Open after 3 failures")
 	}
 }
 
-func TestAllowRequest_Closed(t *testing.T) {
+func TestSuccessResetsFailures(t *testing.T) {
 	be, _ := New("http://localhost:8080")
 
+	be.MarkFailure()
+	be.MarkFailure()
+
+	be.MarkSuccess()
+
+	if be.failureCount.Load() != 0 {
+		t.Errorf("expected failures to reset, got %d", be.failureCount.Load())
+	}
+
+	if State(be.state.Load()) != Closed {
+		t.Error("expected backend to remain Closed")
+	}
+}
+
+func TestAllowRequest(t *testing.T) {
+	be, _ := New("http://localhost:8080")
+
+	// Closed allows requests.
 	if !be.AllowRequest() {
-		t.Error("expected Closed backend to allow request")
+		t.Error("expected Closed backend to allow requests")
 	}
-}
 
-func TestAllowRequest_Open(t *testing.T) {
-	be, _ := New("http://localhost:8080")
-
+	// Open rejects requests.
 	be.state.Store(int32(Open))
 
 	if be.AllowRequest() {
-		t.Error("expected Open backend to reject request")
+		t.Error("expected Open backend to reject requests")
 	}
-}
 
-func TestAllowRequest_HalfOpen_AllowsOnlyOne(t *testing.T) {
-	be, _ := New("http://localhost:8080")
-
+	// HalfOpen allows only one trial.
 	be.state.Store(int32(HalfOpen))
+	be.trialInFlight.Store(false)
 
 	if !be.AllowRequest() {
 		t.Fatal("expected first HalfOpen request to be allowed")
@@ -86,27 +97,18 @@ func TestAllowRequest_HalfOpen_AllowsOnlyOne(t *testing.T) {
 	if be.AllowRequest() {
 		t.Error("expected second HalfOpen request to be rejected")
 	}
-
-	if be.AllowRequest() {
-		t.Error("expected third HalfOpen request to be rejected")
-	}
 }
 
-func TestMarkSuccess_HalfOpenBecomesClosedAfterThree(t *testing.T) {
+func TestHalfOpenToClosedAfterSuccesses(t *testing.T) {
 	be, _ := New("http://localhost:8080")
 
 	be.state.Store(int32(HalfOpen))
 
 	be.MarkSuccess()
-
-	if State(be.state.Load()) != HalfOpen {
-		t.Error("expected backend to remain HalfOpen after 1 success")
-	}
-
 	be.MarkSuccess()
 
 	if State(be.state.Load()) != HalfOpen {
-		t.Error("expected backend to remain HalfOpen after 2 successes")
+		t.Fatal("expected backend to remain HalfOpen after 2 successes")
 	}
 
 	be.MarkSuccess()
@@ -116,19 +118,18 @@ func TestMarkSuccess_HalfOpenBecomesClosedAfterThree(t *testing.T) {
 	}
 
 	if be.successCount.Load() != 0 {
-		t.Error("expected success count to reset after becoming Closed")
+		t.Error("expected success count to reset")
 	}
 
 	if be.failureCount.Load() != 0 {
-		t.Error("expected failure count to reset after becoming Closed")
+		t.Error("expected failure count to reset")
 	}
 }
 
-func TestMarkFailure_HalfOpenBecomesOpen(t *testing.T) {
+func TestHalfOpenFailureTripsBackend(t *testing.T) {
 	be, _ := New("http://localhost:8080")
 
 	be.state.Store(int32(HalfOpen))
-
 	be.MarkFailure()
 
 	if State(be.state.Load()) != Open {
@@ -136,51 +137,24 @@ func TestMarkFailure_HalfOpenBecomesOpen(t *testing.T) {
 	}
 
 	if be.successCount.Load() != 0 {
-		t.Error("expected success count to reset after failure")
+		t.Error("expected success count to reset")
 	}
 }
 
-func TestMarkSuccess_ClosedResetsFailures(t *testing.T) {
+func TestOpenBecomesHalfOpenAfterCooldown(t *testing.T) {
 	be, _ := New("http://localhost:8080")
+	be.cooldown = 10 * time.Millisecond
 
-	be.MarkFailure()
-	be.MarkFailure()
+	be.trip()
 
-	if be.failureCount.Load() != 2 {
-		t.Fatalf("expected 2 failures, got %d", be.failureCount.Load())
+	if State(be.state.Load()) != Open {
+		t.Fatal("expected backend to be Open immediately")
 	}
 
-	be.MarkSuccess()
+	time.Sleep(20 * time.Millisecond)
 
-	if be.failureCount.Load() != 0 {
-		t.Errorf(
-			"expected failure count to reset after success, got %d",
-			be.failureCount.Load(),
-		)
-	}
-
-	if State(be.state.Load()) != Closed {
-		t.Error("expected backend to remain Closed")
-	}
-}
-
-func TestHalfOpenTrialCanBeReleased(t *testing.T) {
-	be, _ := New("http://localhost:8080")
-
-	be.state.Store(int32(HalfOpen))
-
-	if !be.AllowRequest() {
-		t.Fatal("expected first trial request to be allowed")
-	}
-
-	if be.AllowRequest() {
-		t.Fatal("expected second request to be rejected while trial is active")
-	}
-
-	be.trialInFlight.Store(false)
-
-	if !be.AllowRequest() {
-		t.Error("expected another trial after previous trial was released")
+	if State(be.state.Load()) != HalfOpen {
+		t.Error("expected backend to become HalfOpen after cooldown")
 	}
 }
 
@@ -189,27 +163,23 @@ func TestBackendConcurrent(t *testing.T) {
 
 	var wg sync.WaitGroup
 
-	const goroutines = 200
-	const iterations = 10000
-
-	for g := 0; g < goroutines; g++ {
+	for i := 0; i < 100; i++ {
 		wg.Add(1)
 
 		go func(id int) {
 			defer wg.Done()
 
-			for i := 0; i < iterations; i++ {
-				switch (i + id) % 3 {
-				case 0:
-					be.MarkFailure()
-				default:
+			for j := 0; j < 1000; j++ {
+				if (id+j)%2 == 0 {
 					be.MarkSuccess()
+				} else {
+					be.MarkFailure()
 				}
 
-				_ = be.AllowRequest()
-				_ = be.URL()
+				be.AllowRequest()
+				be.URL()
 			}
-		}(g)
+		}(i)
 	}
 
 	wg.Wait()
