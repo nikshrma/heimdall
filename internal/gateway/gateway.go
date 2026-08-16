@@ -34,7 +34,7 @@ func (g *Gateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		Bool("route_nil", route == nil).
 		Bool("balancer_nil", route != nil && route.Balancer == nil).
 		Msg("debug")
-	b := route.Balancer.Next()
+	b := route.Balancer.Next(nil)
 	if b == nil {
 		http.Error(w, "bad gateway", http.StatusBadGateway)
 		return
