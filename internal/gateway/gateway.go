@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/nikshrma/heimdall/internal/retry"
 	"github.com/nikshrma/heimdall/internal/router"
 	"github.com/rs/zerolog/log"
 )
@@ -34,20 +35,11 @@ func (g *Gateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		Bool("route_nil", route == nil).
 		Bool("balancer_nil", route != nil && route.Balancer == nil).
 		Msg("debug")
-	b := route.Balancer.Next(nil)
-	if b == nil {
-		http.Error(w, "bad gateway", http.StatusBadGateway)
-		return
-	}
 	if route.StripPrefix {
 		r.URL.Path = strings.TrimPrefix(r.URL.Path, route.Path)
 		if r.URL.Path == "" {
 			r.URL.Path = "/"
 		}
 	}
-	log.Debug().
-		Str("url", r.URL.Path).
-		Str("backend", b.URL().String()).
-		Msg("dispatching request")
-	b.Proxy.ServeHTTP(w, r)
+	retry.Retry(w, r, route)
 }
