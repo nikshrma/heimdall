@@ -13,8 +13,11 @@ func NewPolicy() *Policy {
 }
 
 func (p *Policy) AttemptAgain() bool {
-	p.MaxAttempts--
-	return p.MaxAttempts > 0
+	if p.MaxAttempts > 0 {
+		p.MaxAttempts--
+		return true
+	}
+	return false
 }
 
 func ShouldRetryMethod(method string) bool {
