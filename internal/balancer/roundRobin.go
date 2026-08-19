@@ -21,16 +21,18 @@ func (rr *roundRobin) Next(excluded map[*backend.Backend]struct{}) *backend.Back
 	if len(rr.backends) == 0 {
 		return nil
 	}
-	for i := 0; i < len(rr.backends); i++ {
-		idx := rr.counter.Add(1) - 1
-		ind := idx % uint64(len(rr.backends))
-		if _, ok := excluded[rr.backends[ind]]; ok {
+	n := uint64(len(rr.backends))
+	start := rr.counter.Add(1) - 1
+	for i := uint64(0); i < n; i++ {
+		ind := (start + i) % n
+		b := rr.backends[ind]
+		if _, ok := excluded[b]; ok {
 			continue
 		}
-		if !rr.backends[ind].AllowRequest() {
+		if !b.AllowRequest() {
 			continue
 		}
-		return rr.backends[ind]
+		return b
 	}
 	return nil
 }
