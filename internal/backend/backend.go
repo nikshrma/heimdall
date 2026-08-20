@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"os"
+	"strconv"
 	"sync/atomic"
 	"time"
 
@@ -64,6 +66,13 @@ func New(be string) (*Backend, error) {
 func (b *Backend) URL() *url.URL { return b.url }
 
 func (b *Backend) AllowRequest() bool {
+	v, err := strconv.ParseBool(os.Getenv("BREAKER_ENABLED"))
+	if err != nil {
+		v = true
+	}
+	if !v {
+		return true
+	}
 	state := b.state.Load()
 	switch state {
 	case int32(Closed):
