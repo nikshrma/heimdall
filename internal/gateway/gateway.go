@@ -31,10 +31,10 @@ func (g *Gateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	log.Debug().
-		Bool("route_nil", route == nil).
-		Bool("balancer_nil", route != nil && route.Balancer == nil).
-		Msg("debug")
+	// log.Debug().
+	// 	Bool("route_nil", route == nil).
+	// 	Bool("balancer_nil", route != nil && route.Balancer == nil).
+	// 	Msg("debug")
 	if route.StripPrefix {
 		r.URL.Path = strings.TrimPrefix(r.URL.Path, route.Path)
 		if r.URL.Path == "" {

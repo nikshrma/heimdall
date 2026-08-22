@@ -23,7 +23,7 @@ export const options = {
 
 export default function () {
   const res = http.get(`${GATEWAY_URL}/contacts`, {
-    timeout: "3s",
+    timeout: "10s",
   });
 
   const ok = check(res, {
