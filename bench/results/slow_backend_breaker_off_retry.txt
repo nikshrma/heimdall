@@ -1,0 +1,40 @@
+ █ THRESHOLDS
+
+    request_errors
+    ✓ 'rate>=0' rate=0.00%
+
+
+  █ TOTAL RESULTS
+
+    checks_total.......: 379     6.193904/s
+    checks_succeeded...: 100.00% 379 out of 379
+    checks_failed......: 0.00%   0 out of 379
+
+    ✓ status is 200
+
+    CUSTOM
+    backend4_hits..................: 190   3.105123/s
+    backend5_hits..................: 189   3.088781/s
+    request_errors.................: 0.00% 0 out of 379
+
+    HTTP
+    http_req_duration..............: avg=1.61s min=282µs    med=3.2s max=3.35s p(90)=3.21s p(95)=3.21s
+      { expected_response:true }...: avg=1.61s min=282µs    med=3.2s max=3.35s p(90)=3.21s p(95)=3.21s
+    http_req_failed................: 0.00% 0 out of 379
+    http_reqs......................: 379   6.193904/s
+
+    EXECUTION
+    iteration_duration.............: avg=1.61s min=331.54µs med=3.2s max=3.36s p(90)=3.21s p(95)=3.21s
+    iterations.....................: 379   6.193904/s
+    vus............................: 10    min=10       max=10
+    vus_max........................: 10    min=10       max=10
+
+    NETWORK
+    data_received..................: 75 kB 1.2 kB/s
+    data_sent......................: 30 kB 483 B/s
+
+
+
+
+running (1m01.2s), 00/10 VUs, 379 complete and 0 interrupted iterations
+sustained_load ✓ [=======================] 10 VUs  1m0s

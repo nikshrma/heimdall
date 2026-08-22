@@ -17,12 +17,14 @@ services:
       NAME: "backend3"
       PORT: "3003"
       ENDPOINT: "POST /"
+      DELAY_MS: "3200"
   im4:
     image: dummy-heimdall-backend
     environment:
       NAME: "backend4"
       PORT: "3004"
       ENDPOINT: "GET /contacts"
+      DELAY_MS: "3200"
   im5:
     image: dummy-heimdall-backend
     environment:
@@ -36,6 +38,8 @@ services:
       dockerfile: deploy/Dockerfile
     ports:
       - 8080:8080
+    environment:
+      BREAKER_ENABLED: "true"
     volumes:
       - ../configs:/configs:ro
     depends_on:
