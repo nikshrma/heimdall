@@ -41,6 +41,12 @@ func New(be string) (*Backend, error) {
 	if err != nil {
 		return nil, err
 	}
+	transport := &http.Transport{
+		Proxy:               http.ProxyFromEnvironment,
+		MaxIdleConns:        100,
+		MaxIdleConnsPerHost: 100,
+		IdleConnTimeout:     90 * time.Second,
+	}
 	proxy := &httputil.ReverseProxy{
 		Rewrite: func(pr *httputil.ProxyRequest) {
 			pr.SetURL(target)
@@ -55,7 +61,7 @@ func New(be string) (*Backend, error) {
 		w.WriteHeader(http.StatusBadGateway)
 	}
 	proxy.Transport = &breakerTransport{
-		next: http.DefaultTransport,
+		next: transport,
 		b:    b,
 	}
 	b.state.Store(int32(Closed))
