@@ -5,22 +5,25 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/nikshrma/heimdall/internal/retry"
+	ratelimit "github.com/nikshrma/heimdall/internal/rate-limit"
 	"github.com/nikshrma/heimdall/internal/router"
 	"github.com/rs/zerolog/log"
 )
 
 type Gateway struct {
 	routes []*router.Route
+	l      *ratelimit.Limiter
 }
 
-func New(routes []*router.Route) *Gateway {
+func New(routes []*router.Route, l *ratelimit.Limiter) *Gateway {
 	return &Gateway{
 		routes: routes,
+		l:      l,
 	}
 }
 
 func (g *Gateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// TODO: decide defaults for limiter if not initialised in main.go
 	route, err := router.Match(g.routes, r)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusMethodNotAllowed)
@@ -41,5 +44,5 @@ func (g *Gateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			r.URL.Path = "/"
 		}
 	}
-	retry.Retry(w, r, route)
+	g.l.RateLimit(w, r, route)
 }

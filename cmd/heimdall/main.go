@@ -3,9 +3,11 @@ package main
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/nikshrma/heimdall/internal/config"
 	"github.com/nikshrma/heimdall/internal/gateway"
+	ratelimit "github.com/nikshrma/heimdall/internal/rate-limit"
 	"github.com/nikshrma/heimdall/internal/router"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -31,9 +33,12 @@ func main() {
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed to build routes")
 	}
+	// TODO: add config for these policy vars
+	// create new limiter
+	l := ratelimit.NewLimiter(32, 20, 5, time.Minute*10)
 
 	// Use gateway
-	gw := gateway.New(routes)
+	gw := gateway.New(routes, l)
 	mux := http.NewServeMux()
 	mux.Handle("/", gw)
 

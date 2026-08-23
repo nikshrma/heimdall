@@ -5,9 +5,11 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"testing"
+	"time"
 
 	"github.com/nikshrma/heimdall/internal/backend"
 	"github.com/nikshrma/heimdall/internal/balancer"
+	ratelimit "github.com/nikshrma/heimdall/internal/rate-limit"
 	"github.com/nikshrma/heimdall/internal/router"
 )
 
@@ -26,7 +28,7 @@ func newTestBackend(t *testing.T, handler http.HandlerFunc) (*backend.Backend, e
 }
 
 func TestGatewayNotFound(t *testing.T) {
-	g := New(nil)
+	g := New(nil, nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/does-not-exist", nil)
 	rr := httptest.NewRecorder()
@@ -53,7 +55,8 @@ func TestGatewayProxyRequest(t *testing.T) {
 		Balancer: balancer.NewRoundRobin([]*backend.Backend{be}),
 	}
 
-	g := New([]*router.Route{route})
+	l := ratelimit.NewLimiter(32, 20, 5, time.Minute*10)
+	g := New([]*router.Route{route}, l)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/users", nil)
 	rr := httptest.NewRecorder()
@@ -80,8 +83,9 @@ func TestGatewayStripPrefix(t *testing.T) {
 		Backends:    []*backend.Backend{be},
 		Balancer:    balancer.NewRoundRobin([]*backend.Backend{be}),
 	}
+	l := ratelimit.NewLimiter(32, 20, 5, time.Minute*10)
 
-	g := New([]*router.Route{route})
+	g := New([]*router.Route{route}, l)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/users", nil)
 	rr := httptest.NewRecorder()
