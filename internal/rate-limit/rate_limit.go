@@ -34,12 +34,14 @@ func NewLimiter(numShards int, cap float64, refillRate int64, ttl time.Duration)
 	for i := range numShards {
 		shards[i].buckets = make(map[string]*bucket)
 	}
-	return &Limiter{
+	l := &Limiter{
 		shards:     shards,
 		capacity:   cap,
 		refillRate: float64(refillRate),
 		ttl:        ttl,
 	}
+	go l.CleanUp()
+	return l
 }
 
 func (l *Limiter) getOrCreateBucket(addr string) *bucket {
@@ -95,4 +97,24 @@ func (l *Limiter) RateLimit(w http.ResponseWriter, r *http.Request, route *route
 	}
 
 	retry.Retry(w, r, route)
+}
+
+func (l *Limiter) CleanUp() {
+	// TODO: also change a bunch of stuff here to be configurable including the ticker time for this cleanup
+	tc := time.NewTicker(l.ttl / 2)
+	defer tc.Stop()
+	for range tc.C {
+		for i := range l.shards {
+			s := &l.shards[i]
+			s.mu.Lock()
+			for addr, b := range s.buckets {
+				b.mu.Lock()
+				passedTime := time.Since(b.lastUsed).Seconds()
+				b.mu.Unlock()
+				if passedTime > float64(l.ttl) {
+					delete(s.buckets, addr)
+				}
+			}
+		}
+	}
 }
