@@ -109,9 +109,9 @@ func (l *Limiter) CleanUp() {
 			s.mu.Lock()
 			for addr, b := range s.buckets {
 				b.mu.Lock()
-				passedTime := time.Since(b.lastUsed).Seconds()
+				passedTime := time.Since(b.lastUsed)
 				b.mu.Unlock()
-				if passedTime > float64(l.ttl) {
+				if passedTime > l.ttl {
 					delete(s.buckets, addr)
 				}
 			}
