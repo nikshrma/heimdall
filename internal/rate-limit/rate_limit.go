@@ -115,6 +115,7 @@ func (l *Limiter) CleanUp() {
 					delete(s.buckets, addr)
 				}
 			}
+			s.mu.Unlock()
 		}
 	}
 }
