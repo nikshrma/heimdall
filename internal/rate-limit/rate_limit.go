@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/nikshrma/heimdall/internal/retry"
@@ -22,7 +23,7 @@ type Limiter struct {
 type bucket struct {
 	mu       sync.Mutex
 	tokens   float64
-	lastUsed time.Time
+	lastUsed atomic.Int64
 }
 type shard struct {
 	mu      sync.RWMutex
@@ -57,9 +58,9 @@ func (l *Limiter) getOrCreateBucket(addr string) *bucket {
 		return b
 	}
 	b := &bucket{
-		tokens:   l.capacity,
-		lastUsed: time.Now(),
+		tokens: l.capacity,
 	}
+	b.lastUsed.Store(time.Now().UnixNano())
 	s.buckets[addr] = b
 
 	return b
@@ -72,10 +73,9 @@ func (l *Limiter) Allow(addr string) bool {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
-	timePassed := time.Since(b.lastUsed).Seconds()
-
-	b.tokens = min(l.capacity, float64(timePassed)*l.refillRate+b.tokens)
-	b.lastUsed = now
+	timePassed := b.idleFor()
+	b.tokens = min(l.capacity, timePassed.Seconds()*l.refillRate+b.tokens)
+	b.lastUsed.Store(now.UnixNano())
 
 	if b.tokens < 1 {
 		return false
@@ -106,16 +106,28 @@ func (l *Limiter) CleanUp() {
 	for range tc.C {
 		for i := range l.shards {
 			s := &l.shards[i]
-			s.mu.Lock()
+			s.mu.RLock()
+			stale := make([]string, len(s.buckets)/4)
 			for addr, b := range s.buckets {
-				b.mu.Lock()
-				passedTime := time.Since(b.lastUsed)
-				b.mu.Unlock()
-				if passedTime > l.ttl {
+				if b.idleFor() > l.ttl/4 {
+					stale = append(stale, addr)
+				}
+			}
+			s.mu.RUnlock()
+			if len(stale) == 0 {
+				continue
+			}
+			s.mu.Lock()
+			for _, addr := range stale {
+				if b, ok := s.buckets[addr]; ok && b.idleFor() > l.ttl/4 {
 					delete(s.buckets, addr)
 				}
 			}
 			s.mu.Unlock()
 		}
 	}
+}
+
+func (b *bucket) idleFor() time.Duration {
+	return time.Since(time.Unix(0, b.lastUsed.Load()))
 }
