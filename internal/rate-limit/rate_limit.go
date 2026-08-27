@@ -107,7 +107,7 @@ func (l *Limiter) CleanUp() {
 		for i := range l.shards {
 			s := &l.shards[i]
 			s.mu.RLock()
-			stale := make([]string, len(s.buckets)/4)
+			stale := make([]string, 0, len(s.buckets)/4)
 			for addr, b := range s.buckets {
 				if b.idleFor() > l.ttl/4 {
 					stale = append(stale, addr)
