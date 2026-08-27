@@ -34,6 +34,7 @@ type Backend struct {
 
 	cooldown      time.Duration
 	slowThreshold time.Duration
+	enabled       bool
 }
 
 func New(be string) (*Backend, error) {
@@ -53,9 +54,14 @@ func New(be string) (*Backend, error) {
 			pr.SetXForwarded()
 		},
 	}
+	v, err := strconv.ParseBool(os.Getenv("BREAKER_ENABLED"))
+	if err != nil {
+		v = true
+	}
 	b := &Backend{
-		Proxy: proxy,
-		url:   target,
+		Proxy:   proxy,
+		url:     target,
+		enabled: v,
 	}
 	proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
 		w.WriteHeader(http.StatusBadGateway)
@@ -72,11 +78,7 @@ func New(be string) (*Backend, error) {
 func (b *Backend) URL() *url.URL { return b.url }
 
 func (b *Backend) AllowRequest() bool {
-	v, err := strconv.ParseBool(os.Getenv("BREAKER_ENABLED"))
-	if err != nil {
-		v = true
-	}
-	if !v {
+	if !b.enabled {
 		return true
 	}
 	state := b.state.Load()
