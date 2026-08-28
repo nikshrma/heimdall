@@ -5,19 +5,36 @@ services:
       NAME: "backend1"
       PORT: "3001"
       ENDPOINT: "POST /"
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1.5G
+
   im2:
     image: dummy-heimdall-backend
     environment:
       NAME: "backend2"
       PORT: "3002"
       ENDPOINT: "POST /"
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1.5G
+
   im3:
     image: dummy-heimdall-backend
     environment:
       NAME: "backend3"
       PORT: "3003"
       ENDPOINT: "POST /"
-      DELAY_MS: "3200"
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1.5G
+
   im4:
     image: dummy-heimdall-backend
     environment:
@@ -25,19 +42,21 @@ services:
       PORT: "3004"
       ENDPOINT: "GET /contacts"
       DELAY_MS: "3200"
+
   im5:
     image: dummy-heimdall-backend
     environment:
       NAME: "backend5"
       PORT: "3005"
       ENDPOINT: "GET /contacts"
+
   heimdall:
     image: heimdall
     build:
       context: ..
       dockerfile: deploy/Dockerfile
     ports:
-      - 8080:8080
+      - "8080:8080"
     environment:
       BREAKER_ENABLED: "true"
     volumes:
@@ -48,3 +67,8 @@ services:
       - im3
       - im4
       - im5
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1.5G
