@@ -51,12 +51,16 @@ func (l *Limiter) getOrCreateBucket(addr string) *bucket {
 	ind := int(h.Sum32() % uint32(len(l.shards)))
 	s := &l.shards[ind]
 
+	s.mu.RLock()
+	if b, ok := s.buckets[addr]; ok {
+		s.mu.RUnlock()
+		return b
+	}
+	s.mu.RUnlock()
+
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	if b, ok := s.buckets[addr]; ok {
-		return b
-	}
 	b := &bucket{
 		tokens: l.capacity,
 	}
@@ -67,12 +71,11 @@ func (l *Limiter) getOrCreateBucket(addr string) *bucket {
 }
 
 func (l *Limiter) Allow(addr string) bool {
-	now := time.Now()
-
 	b := l.getOrCreateBucket(addr)
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
+	now := time.Now()
 	timePassed := b.idleFor()
 	b.tokens = min(l.capacity, timePassed.Seconds()*l.refillRate+b.tokens)
 	b.lastUsed.Store(now.UnixNano())
