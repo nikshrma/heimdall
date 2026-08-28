@@ -35,7 +35,7 @@ func main() {
 	}
 	// TODO: add config for these policy vars
 	// create new limiter
-	l := ratelimit.NewLimiter(32, 20, 5, time.Minute*10)
+	l := ratelimit.NewLimiter(32, 2000, 2000, time.Minute*10)
 
 	// Use gateway
 	gw := gateway.New(routes, l)
