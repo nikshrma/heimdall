@@ -11,6 +11,7 @@ import (
 
 	"github.com/nikshrma/heimdall/internal/retry"
 	"github.com/nikshrma/heimdall/internal/router"
+	"github.com/rs/zerolog/log"
 )
 
 type Limiter struct {
@@ -92,10 +93,12 @@ func (l *Limiter) RateLimit(w http.ResponseWriter, r *http.Request, route *route
 	addr, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
 		http.Error(w, "invalid client address", http.StatusBadRequest)
+		log.Info().Err(err).Msg("invalid client address")
 		return
 	}
 	if !l.Allow(addr) {
 		http.Error(w, "You've been rate limitted", http.StatusTooManyRequests)
+		log.Warn().Str("url", r.URL.Path).Msg("request has been rate-limited")
 		return
 	}
 

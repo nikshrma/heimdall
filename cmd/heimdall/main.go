@@ -26,7 +26,7 @@ func main() {
 		log.Fatal().Err(err).Msg("invalid log level")
 	}
 	zerolog.SetGlobalLevel(level)
-	log.Debug().Interface("config", cfg).Msg("loaded config")
+	log.Info().Interface("config", cfg).Msg("loaded config")
 
 	// load dynamic routes
 	routes, err := router.Build(*cfg)

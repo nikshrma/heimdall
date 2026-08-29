@@ -16,7 +16,7 @@ func Retry(w http.ResponseWriter, r *http.Request, route *router.Route) {
 			http.Error(w, "bad gateway", http.StatusBadGateway)
 			return
 		}
-		log.Debug().
+		log.Info().
 			Str("url", r.URL.Path).Str("backend", b.URL().String()).Msg("proxied non-retryable request")
 		b.Proxy.ServeHTTP(w, r)
 		return
@@ -28,9 +28,13 @@ func Retry(w http.ResponseWriter, r *http.Request, route *router.Route) {
 		b := route.Balancer.Next(excluded)
 		if b == nil {
 			if lastBuffer != nil {
+				log.Warn().
+					Str("url", r.URL.Path).Msg("request failed: no backends available for retry")
 				lastBuffer.WriteTo(w)
 				return
 			} else {
+				log.Warn().
+					Str("url", r.URL.Path).Msg("request failed: bad gateway")
 				http.Error(w, "bad gateway", http.StatusBadGateway)
 				return
 			}
@@ -39,15 +43,21 @@ func Retry(w http.ResponseWriter, r *http.Request, route *router.Route) {
 		b.Proxy.ServeHTTP(buffer, r)
 		lastBuffer = buffer
 		if !ShouldRetryStatus(buffer.StatusCode()) {
+			log.Info().
+				Str("url", r.URL.Path).Str("backend", b.URL().String()).Msg("request complete")
 			buffer.WriteTo(w)
 			return
 		}
 		excluded[b] = struct{}{}
 	}
 	if lastBuffer != nil {
+		log.Warn().
+			Str("url", r.URL.Path).Msg("request failed: ran out of retry attempts")
 		lastBuffer.WriteTo(w)
 		return
 	} else {
+		log.Warn().
+			Str("url", r.URL.Path).Msg("request failed: bad gateway")
 		http.Error(w, "bad gateway", http.StatusBadGateway)
 	}
 }
