@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/nikshrma/heimdall/internal/retry"
-	"github.com/nikshrma/heimdall/internal/router"
 	"github.com/rs/zerolog/log"
 )
 
@@ -89,7 +88,7 @@ func (l *Limiter) Allow(addr string) bool {
 	return true
 }
 
-func (l *Limiter) RateLimit(w http.ResponseWriter, r *http.Request, route *router.Route) {
+func (l *Limiter) RateLimit(w http.ResponseWriter, r *http.Request) {
 	addr, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
 		http.Error(w, "invalid client address", http.StatusBadRequest)
@@ -102,7 +101,7 @@ func (l *Limiter) RateLimit(w http.ResponseWriter, r *http.Request, route *route
 		return
 	}
 
-	retry.Retry(w, r, route)
+	retry.Retry(w, r)
 }
 
 func (l *Limiter) CleanUp() {

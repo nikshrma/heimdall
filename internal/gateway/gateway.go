@@ -2,9 +2,11 @@
 package gateway
 
 import (
+	"context"
 	"net/http"
 	"strings"
 
+	"github.com/nikshrma/heimdall/internal/ctxkeys"
 	ratelimit "github.com/nikshrma/heimdall/internal/rate-limit"
 	"github.com/nikshrma/heimdall/internal/router"
 	"github.com/rs/zerolog/log"
@@ -42,5 +44,7 @@ func (g *Gateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			r.URL.Path = "/"
 		}
 	}
-	g.l.RateLimit(w, r, route)
+	ctx := context.WithValue(r.Context(), ctxkeys.RouteKey{}, route)
+	r = r.WithContext(ctx)
+	g.l.RateLimit(w, r)
 }

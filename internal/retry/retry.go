@@ -5,11 +5,13 @@ import (
 	"net/http"
 
 	"github.com/nikshrma/heimdall/internal/backend"
+	"github.com/nikshrma/heimdall/internal/ctxkeys"
 	"github.com/nikshrma/heimdall/internal/router"
 	"github.com/rs/zerolog/log"
 )
 
-func Retry(w http.ResponseWriter, r *http.Request, route *router.Route) {
+func Retry(w http.ResponseWriter, r *http.Request) {
+	route := r.Context().Value(ctxkeys.RouteKey{}).(*router.Route)
 	if !ShouldRetryMethod(r.Method) {
 		b := route.Balancer.Next(nil)
 		if b == nil {
