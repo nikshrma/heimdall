@@ -103,3 +103,22 @@ var (
 		},
 	)
 )
+
+func init() {
+	prometheus.MustRegister(
+		TotalRequests,
+		RequestDuration,
+		InFlightRequests,
+		ProxyBackendRequestsTotal,
+		ProxyBackendRequestDuration,
+		ProxyBackendInFlightRequests,
+		ProxyBackendSelectedTotal,
+		CircuitBreakerState,
+		CircuitBreakerTripsTotal,
+		CircuitBreakerRejectionsTotal,
+		ProxyRetriesTotal,
+		ProxyRequestsExhaustedRetriesTotal,
+		RateLimitRequestsTotal,
+		RateLimitActiveBuckets,
+	)
+}
