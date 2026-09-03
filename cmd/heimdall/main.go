@@ -9,11 +9,12 @@ import (
 	"github.com/nikshrma/heimdall/internal/gateway"
 	ratelimit "github.com/nikshrma/heimdall/internal/rate-limit"
 	"github.com/nikshrma/heimdall/internal/router"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
 
-func main() {
+func buildGateway() *gateway.Gateway {
 	// Load config
 	cfg, err := config.Load("configs/routes.yml")
 	if err != nil {
@@ -33,14 +34,20 @@ func main() {
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed to build routes")
 	}
+
 	// TODO: add config for these policy vars
 	// create new limiter
 	l := ratelimit.NewLimiter(32, 2000, 2000, time.Minute*10)
-
-	// Use gateway
 	gw := gateway.New(routes, l)
+	return gw
+}
+
+func main() {
+	// Use gateway
+	gw := buildGateway()
 	mux := http.NewServeMux()
 	mux.Handle("/", gw)
+	mux.Handle("/metrics", promhttp.Handler())
 
 	log.Info().Msg("starting server")
 	if err := http.ListenAndServe(":8080", mux); err != nil {
