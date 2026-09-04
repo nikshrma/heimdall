@@ -78,19 +78,20 @@ func (g *Gateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	ctx := context.WithValue(r.Context(), ctxkeys.RouteKey{}, route)
+	ctx = context.WithValue(ctx, ctxkeys.RoutePathKey{}, route.Path)
 	r = r.WithContext(ctx)
 
 	sw := &StatusWriter{
 		ResponseWriter: w,
 	}
 
-	metrics.InFlightRequests.WithLabelValues(r.Context().Value(ctxkeys.RouteKey{}).(string)).Inc()
-	defer metrics.InFlightRequests.WithLabelValues(r.Context().Value(ctxkeys.RouteKey{}).(string)).Dec()
+	metrics.InFlightRequests.WithLabelValues(route.Path).Inc()
+	defer metrics.InFlightRequests.WithLabelValues(route.Path).Dec()
 
 	start := time.Now()
 
 	g.l.RateLimit(sw, r)
 	duration := time.Since(start).Seconds()
-	metrics.TotalRequests.WithLabelValues(r.Context().Value(ctxkeys.RouteKey{}).(string), r.Method, strconv.Itoa(sw.StatusCode())).Inc()
-	metrics.RequestDuration.WithLabelValues(r.Context().Value(ctxkeys.RouteKey{}).(string), r.Method).Observe(duration)
+	metrics.TotalRequests.WithLabelValues(route.Path, r.Method, strconv.Itoa(sw.StatusCode())).Inc()
+	metrics.RequestDuration.WithLabelValues(route.Path, r.Method).Observe(duration)
 }

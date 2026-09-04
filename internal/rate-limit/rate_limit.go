@@ -9,6 +9,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/nikshrma/heimdall/internal/metrics"
 	"github.com/nikshrma/heimdall/internal/retry"
 	"github.com/rs/zerolog/log"
 )
@@ -66,7 +67,7 @@ func (l *Limiter) getOrCreateBucket(addr string) *bucket {
 	}
 	b.lastUsed.Store(time.Now().UnixNano())
 	s.buckets[addr] = b
-
+	metrics.RateLimitActiveBuckets.Inc()
 	return b
 }
 
@@ -98,8 +99,10 @@ func (l *Limiter) RateLimit(w http.ResponseWriter, r *http.Request) {
 	if !l.Allow(addr) {
 		http.Error(w, "You've been rate limitted", http.StatusTooManyRequests)
 		log.Warn().Str("url", r.URL.Path).Msg("request has been rate-limited")
+		metrics.RateLimitRequestsTotal.WithLabelValues("rejected").Inc()
 		return
 	}
+	metrics.RateLimitRequestsTotal.WithLabelValues("allowed").Inc()
 
 	retry.Retry(w, r)
 }
@@ -126,6 +129,7 @@ func (l *Limiter) CleanUp() {
 			for _, addr := range stale {
 				if b, ok := s.buckets[addr]; ok && b.idleFor() > l.ttl/4 {
 					delete(s.buckets, addr)
+					metrics.RateLimitActiveBuckets.Dec()
 				}
 			}
 			s.mu.Unlock()

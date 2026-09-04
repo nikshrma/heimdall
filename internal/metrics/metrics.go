@@ -80,7 +80,7 @@ var (
 			Name: "proxy_retries_total",
 			Help: "Total number of retry attempts made by the proxy.",
 		},
-		[]string{"backend", "route", "reason"},
+		[]string{"backend", "route"},
 	)
 	ProxyRequestsExhaustedRetriesTotal = prometheus.NewCounterVec(
 		prometheus.CounterOpts{

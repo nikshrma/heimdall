@@ -6,6 +6,7 @@ import (
 
 	"github.com/nikshrma/heimdall/internal/backend"
 	"github.com/nikshrma/heimdall/internal/ctxkeys"
+	"github.com/nikshrma/heimdall/internal/metrics"
 	"github.com/nikshrma/heimdall/internal/router"
 	"github.com/rs/zerolog/log"
 )
@@ -18,6 +19,7 @@ func Retry(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "bad gateway", http.StatusBadGateway)
 			return
 		}
+		metrics.ProxyBackendSelectedTotal.WithLabelValues(b.URL().String(), route.Path).Inc()
 		log.Info().
 			Str("url", r.URL.Path).Str("backend", b.URL().String()).Msg("proxied non-retryable request")
 		b.Proxy.ServeHTTP(w, r)
@@ -41,6 +43,7 @@ func Retry(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		}
+		metrics.ProxyBackendSelectedTotal.WithLabelValues(b.URL().String(), route.Path).Inc()
 		buffer := NewResponseBuffer()
 		b.Proxy.ServeHTTP(buffer, r)
 		lastBuffer = buffer
@@ -50,16 +53,19 @@ func Retry(w http.ResponseWriter, r *http.Request) {
 			buffer.WriteTo(w)
 			return
 		}
+		metrics.ProxyRetriesTotal.WithLabelValues(b.URL().String(), route.Path).Inc()
 		excluded[b] = struct{}{}
 	}
 	if lastBuffer != nil {
 		log.Warn().
 			Str("url", r.URL.Path).Msg("request failed: ran out of retry attempts")
 		lastBuffer.WriteTo(w)
+		metrics.ProxyRequestsExhaustedRetriesTotal.WithLabelValues(route.Path).Inc()
 		return
 	} else {
 		log.Warn().
 			Str("url", r.URL.Path).Msg("request failed: bad gateway")
 		http.Error(w, "bad gateway", http.StatusBadGateway)
+		metrics.ProxyRequestsExhaustedRetriesTotal.WithLabelValues(route.Path).Inc()
 	}
 }

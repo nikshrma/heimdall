@@ -4,6 +4,7 @@ import (
 	"sync/atomic"
 
 	"github.com/nikshrma/heimdall/internal/backend"
+	"github.com/nikshrma/heimdall/internal/metrics"
 )
 
 type roundRobin struct {
@@ -45,6 +46,7 @@ func (rr *roundRobin) Next(excluded map[*backend.Backend]struct{}) *backend.Back
 		}
 
 		if !b.AllowRequest() {
+			metrics.CircuitBreakerRejectionsTotal.WithLabelValues(b.URL().String()).Inc()
 			continue
 		}
 

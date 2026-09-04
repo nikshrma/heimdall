@@ -2,8 +2,11 @@ package backend
 
 import (
 	"net/http"
+	"strconv"
 	"time"
 
+	"github.com/nikshrma/heimdall/internal/ctxkeys"
+	"github.com/nikshrma/heimdall/internal/metrics"
 	"github.com/rs/zerolog/log"
 )
 
@@ -13,10 +16,23 @@ type breakerTransport struct {
 }
 
 func (t *breakerTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	path := req.Context().Value(ctxkeys.RoutePathKey{}).(string)
+
 	start := time.Now()
+
+	metrics.ProxyBackendInFlightRequests.WithLabelValues(t.b.URL().String()).Inc()
 
 	resp, err := t.next.RoundTrip(req)
 	duration := time.Since(start)
+
+	statusCode := "0"
+	if resp != nil {
+		statusCode = strconv.Itoa(resp.StatusCode)
+	}
+
+	metrics.ProxyBackendRequestsTotal.WithLabelValues(t.b.URL().String(), path, req.Method, statusCode).Inc()
+	metrics.ProxyBackendInFlightRequests.WithLabelValues(t.b.URL().String()).Dec()
+	metrics.ProxyBackendRequestDuration.WithLabelValues(t.b.URL().String(), path).Observe(duration.Seconds())
 
 	switch {
 	case err != nil:

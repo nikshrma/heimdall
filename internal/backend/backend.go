@@ -11,6 +11,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/nikshrma/heimdall/internal/metrics"
 	"github.com/rs/zerolog/log"
 )
 
@@ -103,6 +104,7 @@ func (b *Backend) MarkSuccess() {
 		b.successCount.Add(1)
 		if b.successCount.Load() >= 3 {
 			b.state.Store(int32(Closed))
+			metrics.CircuitBreakerState.WithLabelValues(b.URL().String()).Set(float64(Closed))
 			b.successCount.Store(0)
 			b.failureCount.Store(0)
 		}
@@ -128,9 +130,13 @@ func (b *Backend) MarkFailure() {
 
 func (b *Backend) trip() {
 	b.state.Store(int32(Open))
+	metrics.CircuitBreakerTripsTotal.WithLabelValues(b.URL().String()).Inc()
+	metrics.CircuitBreakerState.WithLabelValues(b.URL().String()).Set(float64(Open))
 	b.successCount.Store(0)
 	b.trialInFlight.Store(false)
 	time.AfterFunc(b.cooldown, func() {
-		b.state.CompareAndSwap(int32(Open), int32(HalfOpen))
+		if b.state.CompareAndSwap(int32(Open), int32(HalfOpen)) {
+			metrics.CircuitBreakerState.WithLabelValues(b.URL().String()).Set(float64(HalfOpen))
+		}
 	})
 }
