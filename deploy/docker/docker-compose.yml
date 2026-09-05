@@ -72,3 +72,12 @@ services:
         limits:
           cpus: "1"
           memory: 1.5G
+  prometheus:
+    image: prom/prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ../prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+volumes:
+  prometheus-data:
