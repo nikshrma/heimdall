@@ -79,5 +79,11 @@ services:
     volumes:
       - ../prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus-data:/prometheus
+  grafana:
+    image: grafana/grafana
+    ports:
+      - "2999:3000"
+    depends_on:
+      - prometheus
 volumes:
   prometheus-data:
