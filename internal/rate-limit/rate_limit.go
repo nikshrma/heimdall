@@ -5,6 +5,8 @@ import (
 	"hash/fnv"
 	"net"
 	"net/http"
+	"os"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -19,6 +21,7 @@ type Limiter struct {
 	capacity   float64
 	refillRate float64
 	ttl        time.Duration
+	enabled    bool
 }
 
 type bucket struct {
@@ -42,6 +45,11 @@ func NewLimiter(numShards int, cap float64, refillRate int64, ttl time.Duration)
 		refillRate: float64(refillRate),
 		ttl:        ttl,
 	}
+	v, err := strconv.ParseBool(os.Getenv("LIMITER_ENABLED"))
+	if err != nil {
+		v = true
+	}
+	l.enabled = v
 	go l.CleanUp()
 	return l
 }
@@ -94,6 +102,11 @@ func (l *Limiter) RateLimit(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		http.Error(w, "invalid client address", http.StatusBadRequest)
 		log.Info().Err(err).Msg("invalid client address")
+		return
+	}
+	if !l.enabled {
+		metrics.RateLimitRequestsTotal.WithLabelValues("bypassed").Inc()
+		retry.Retry(w, r)
 		return
 	}
 	if !l.Allow(addr) {
