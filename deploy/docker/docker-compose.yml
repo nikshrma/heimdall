@@ -60,7 +60,7 @@ services:
     environment:
       BREAKER_ENABLED: "true"
     volumes:
-      - ../configs:/configs:ro
+      - ../../configs:/configs:ro
     depends_on:
       - im1
       - im2
