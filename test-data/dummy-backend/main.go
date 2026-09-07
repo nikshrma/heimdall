@@ -4,6 +4,7 @@ package main
 import (
 	"encoding/json"
 	"log"
+	"math/rand"
 	"net/http"
 	"os"
 	"strconv"
@@ -28,14 +29,14 @@ func main() {
 	name := getenv("NAME", "Backend")
 	port := getenv("PORT", "8080")
 	endpoint := getenv("ENDPOINT", "/")
-	delayMS, _ := strconv.Atoi(getenv("DELAY_MS", "0"))
+	delayProb, _ := strconv.ParseFloat(getenv("DELAY_PROB", "0"), 64)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc(endpoint, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-
-		if delayMS > 0 {
-			time.Sleep(time.Duration(delayMS) * time.Millisecond)
+		chance := rand.Float64()
+		if chance < delayProb {
+			time.Sleep(3200 * time.Millisecond)
 		}
 		json.NewEncoder(w).Encode(Response{
 			Name:      name,
