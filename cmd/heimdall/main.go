@@ -3,7 +3,6 @@ package main
 
 import (
 	"net/http"
-	"time"
 
 	"github.com/nikshrma/heimdall/internal/config"
 	"github.com/nikshrma/heimdall/internal/gateway"
@@ -35,9 +34,8 @@ func buildGateway() *gateway.Gateway {
 		log.Fatal().Err(err).Msg("failed to build routes")
 	}
 
-	// TODO: add config for these policy vars
 	// create new limiter
-	l := ratelimit.NewLimiter(32, 2000, 2000, time.Minute*10)
+	l := ratelimit.NewLimiter(cfg.LimiterVars.NumShards, cfg.LimiterVars.Capacity, cfg.LimiterVars.RefillRate, cfg.LimiterVars.TTL)
 	gw := gateway.New(routes, l)
 	return gw
 }

@@ -58,7 +58,6 @@ func New(routes []*router.Route, l *ratelimit.Limiter) *Gateway {
 }
 
 func (g *Gateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	// TODO: decide defaults for limiter if not initialised in main.go
 	route, err := router.Match(g.routes, r)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusMethodNotAllowed)
