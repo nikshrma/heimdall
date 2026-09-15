@@ -19,11 +19,12 @@ type LogConfig struct {
 	Level string `yaml:"level"`
 }
 type LimiterConfig struct {
-	Enabled    bool          `yaml:"enabled"`
-	NumShards  int           `yaml:"shards"`
-	Capacity   float64       `yaml:"capacity"`
-	RefillRate int64         `yaml:"refillRate"`
-	TTL        time.Duration `yaml:"ttl"`
+	Enabled     bool          `yaml:"enabled"`
+	NumShards   int           `yaml:"shards"`
+	Capacity    float64       `yaml:"capacity"`
+	RefillRate  int64         `yaml:"refillRate"`
+	TTL         time.Duration `yaml:"ttl"`
+	CleanUpTime time.Duration `yaml:"cleanUpTime"`
 }
 
 type Config struct {
@@ -48,6 +49,9 @@ func validateLimiterConfig(cfg *LimiterConfig) error {
 	}
 	if cfg.TTL <= 0 {
 		return errors.New("invalid limiter ttl")
+	}
+	if cfg.CleanUpTime <= 0 {
+		return errors.New("invalid clean up duration")
 	}
 
 	return nil

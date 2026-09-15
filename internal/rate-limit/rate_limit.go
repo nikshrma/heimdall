@@ -17,11 +17,12 @@ import (
 )
 
 type Limiter struct {
-	shards     []shard
-	capacity   float64
-	refillRate float64
-	ttl        time.Duration
-	enabled    bool
+	shards      []shard
+	capacity    float64
+	refillRate  float64
+	ttl         time.Duration
+	enabled     bool
+	cleanUpTime time.Duration
 }
 
 type bucket struct {
@@ -34,16 +35,17 @@ type shard struct {
 	buckets map[string]*bucket
 }
 
-func NewLimiter(numShards int, cap float64, refillRate int64, ttl time.Duration) *Limiter {
+func NewLimiter(numShards int, cap float64, refillRate int64, ttl time.Duration, cleanUpTime time.Duration) *Limiter {
 	shards := make([]shard, numShards)
 	for i := range numShards {
 		shards[i].buckets = make(map[string]*bucket)
 	}
 	l := &Limiter{
-		shards:     shards,
-		capacity:   cap,
-		refillRate: float64(refillRate),
-		ttl:        ttl,
+		shards:      shards,
+		capacity:    cap,
+		refillRate:  float64(refillRate),
+		ttl:         ttl,
+		cleanUpTime: cleanUpTime,
 	}
 	v, err := strconv.ParseBool(os.Getenv("LIMITER_ENABLED"))
 	if err != nil {
@@ -121,8 +123,7 @@ func (l *Limiter) RateLimit(w http.ResponseWriter, r *http.Request) {
 }
 
 func (l *Limiter) CleanUp() {
-	// TODO: also change a bunch of stuff here to be configurable including the ticker time for this cleanup
-	tc := time.NewTicker(l.ttl / 2)
+	tc := time.NewTicker(l.cleanUpTime)
 	defer tc.Stop()
 	for range tc.C {
 		for i := range l.shards {
@@ -130,7 +131,7 @@ func (l *Limiter) CleanUp() {
 			s.mu.RLock()
 			stale := make([]string, 0, len(s.buckets)/4)
 			for addr, b := range s.buckets {
-				if b.idleFor() > l.ttl/4 {
+				if b.idleFor() > l.ttl {
 					stale = append(stale, addr)
 				}
 			}

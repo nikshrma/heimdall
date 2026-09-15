@@ -35,7 +35,7 @@ func buildGateway() *gateway.Gateway {
 	}
 
 	// create new limiter
-	l := ratelimit.NewLimiter(cfg.LimiterVars.NumShards, cfg.LimiterVars.Capacity, cfg.LimiterVars.RefillRate, cfg.LimiterVars.TTL)
+	l := ratelimit.NewLimiter(cfg.LimiterVars.NumShards, cfg.LimiterVars.Capacity, cfg.LimiterVars.RefillRate, cfg.LimiterVars.TTL, cfg.LimiterVars.CleanUpTime)
 	gw := gateway.New(routes, l)
 	return gw
 }
