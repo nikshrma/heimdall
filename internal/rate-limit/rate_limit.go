@@ -72,6 +72,10 @@ func (l *Limiter) getOrCreateBucket(addr string) *bucket {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	if b, ok := s.buckets[addr]; ok {
+		s.mu.RUnlock()
+		return b
+	}
 	b := &bucket{
 		tokens: l.capacity,
 	}
