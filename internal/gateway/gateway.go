@@ -16,8 +16,8 @@ import (
 )
 
 type Gateway struct {
-	routes []*router.Route
-	l      *ratelimit.Limiter
+	matcher *router.Matcher
+	l       *ratelimit.Limiter
 }
 type StatusWriter struct {
 	http.ResponseWriter
@@ -52,13 +52,13 @@ func (w *StatusWriter) StatusCode() int {
 
 func New(routes []*router.Route, l *ratelimit.Limiter) *Gateway {
 	return &Gateway{
-		routes: routes,
-		l:      l,
+		matcher: router.NewMatcher(routes),
+		l:       l,
 	}
 }
 
 func (g *Gateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	route, err := router.Match(g.routes, r)
+	route, err := g.matcher.Match(r)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusMethodNotAllowed)
 		log.Warn().Str("url", r.URL.Path).Msg("request failed: method not allowed")

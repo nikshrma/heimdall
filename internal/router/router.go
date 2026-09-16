@@ -5,7 +5,6 @@ import (
 	"errors"
 	"net/http"
 	"slices"
-	"strings"
 
 	"github.com/nikshrma/heimdall/internal/backend"
 	"github.com/nikshrma/heimdall/internal/balancer"
@@ -20,6 +19,16 @@ type Route struct {
 	StripPrefix bool
 	Balancer    balancer.Balancer
 	Backends    []*backend.Backend
+}
+
+type Matcher struct {
+	root *radixNode
+}
+
+type radixNode struct {
+	prefix   string
+	route    *Route
+	children []*radixNode
 }
 
 func buildBackends(backends []string) ([]*backend.Backend, error) {
@@ -56,20 +65,30 @@ func Build(cfg config.Config) ([]*Route, error) {
 	return runtimeRoutes, nil
 }
 
+func NewMatcher(routes []*Route) *Matcher {
+	m := &Matcher{
+		root: &radixNode{},
+	}
+	for _, route := range routes {
+		m.root.insert(route.Path, route)
+	}
+	return m
+}
+
 func Match(routes []*Route, req *http.Request) (*Route, error) {
+	return NewMatcher(routes).Match(req)
+}
+
+func (m *Matcher) Match(req *http.Request) (*Route, error) {
 	var best *Route
 	methodMismatch := false
 
-	for _, rc := range routes {
-		if strings.HasPrefix(req.URL.Path, rc.Path) {
-			if best == nil || len(rc.Path) > len(best.Path) {
-				if MethodMatch(rc.Methods, req.Method) {
-					best = rc
-					methodMismatch = false
-				} else if best == nil {
-					methodMismatch = true
-				}
-			}
+	for _, route := range m.root.match(req.URL.Path) {
+		if MethodMatch(route.Methods, req.Method) {
+			best = route
+			methodMismatch = false
+		} else if best == nil {
+			methodMismatch = true
 		}
 	}
 
@@ -80,6 +99,92 @@ func Match(routes []*Route, req *http.Request) (*Route, error) {
 		return nil, ErrorMethodNotAllowed
 	}
 	return nil, nil
+}
+
+func (n *radixNode) insert(path string, route *Route) {
+	if path == "" {
+		n.route = route
+		return
+	}
+
+	for _, child := range n.children {
+		common := commonPrefix(path, child.prefix)
+		if common == 0 {
+			continue
+		}
+
+		if common == len(child.prefix) {
+			child.insert(path[common:], route)
+			return
+		}
+
+		split := &radixNode{
+			prefix:   child.prefix[common:],
+			route:    child.route,
+			children: child.children,
+		}
+		child.prefix = child.prefix[:common]
+		child.route = nil
+		child.children = []*radixNode{split}
+
+		if common == len(path) {
+			child.route = route
+			return
+		}
+
+		child.children = append(child.children, &radixNode{
+			prefix: path[common:],
+			route:  route,
+		})
+		return
+	}
+
+	n.children = append(n.children, &radixNode{
+		prefix: path,
+		route:  route,
+	})
+}
+
+func (n *radixNode) match(path string) []*Route {
+	var matches []*Route
+	node := n
+
+	for {
+		if node.route != nil {
+			matches = append(matches, node.route)
+		}
+		if path == "" {
+			return matches
+		}
+
+		var next *radixNode
+		for _, child := range node.children {
+			if hasPrefix(path, child.prefix) {
+				next = child
+				break
+			}
+		}
+		if next == nil {
+			return matches
+		}
+
+		path = path[len(next.prefix):]
+		node = next
+	}
+}
+
+func commonPrefix(a, b string) int {
+	max := min(len(a), len(b))
+	for i := 0; i < max; i++ {
+		if a[i] != b[i] {
+			return i
+		}
+	}
+	return max
+}
+
+func hasPrefix(s, prefix string) bool {
+	return len(s) >= len(prefix) && s[:len(prefix)] == prefix
 }
 
 func MethodMatch(methods []string, method string) bool {
