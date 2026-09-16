@@ -5,12 +5,10 @@ import (
 	"net/http/httptest"
 	"testing"
 	"time"
-
-	"github.com/nikshrma/heimdall/internal/router"
 )
 
 func TestLimiterAllow(t *testing.T) {
-	l := NewLimiter(4, 2, 0, time.Minute)
+	l := NewLimiter(4, 2, 0, time.Minute, time.Minute)
 
 	if !l.Allow("127.0.0.1") {
 		t.Fatal("first request should be allowed")
@@ -26,7 +24,7 @@ func TestLimiterAllow(t *testing.T) {
 }
 
 func TestLimiterRefill(t *testing.T) {
-	l := NewLimiter(4, 1, 10, time.Minute)
+	l := NewLimiter(4, 1, 10, time.Minute, time.Minute)
 
 	if !l.Allow("127.0.0.1") {
 		t.Fatal("first request should be allowed")
@@ -44,7 +42,7 @@ func TestLimiterRefill(t *testing.T) {
 }
 
 func TestLimiterDifferentIPs(t *testing.T) {
-	l := NewLimiter(4, 1, 0, time.Minute)
+	l := NewLimiter(4, 1, 0, time.Minute, time.Minute)
 
 	if !l.Allow("127.0.0.1") {
 		t.Fatal("first IP should be allowed")
@@ -56,14 +54,14 @@ func TestLimiterDifferentIPs(t *testing.T) {
 }
 
 func TestLimiterRateLimitInvalidAddress(t *testing.T) {
-	l := NewLimiter(4, 1, 0, time.Minute)
+	l := NewLimiter(4, 1, 0, time.Minute, time.Minute)
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	req.RemoteAddr = "invalid-address"
 
 	rec := httptest.NewRecorder()
 
-	l.RateLimit(rec, req, nil)
+	l.RateLimit(rec, req)
 
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("expected %d, got %d", http.StatusBadRequest, rec.Code)
@@ -71,7 +69,7 @@ func TestLimiterRateLimitInvalidAddress(t *testing.T) {
 }
 
 func TestLimiterRateLimitExceeded(t *testing.T) {
-	l := NewLimiter(4, 1, 0, time.Minute)
+	l := NewLimiter(4, 1, 0, time.Minute, time.Minute)
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	req.RemoteAddr = "127.0.0.1:1234"
@@ -82,7 +80,7 @@ func TestLimiterRateLimitExceeded(t *testing.T) {
 	}
 
 	rec := httptest.NewRecorder()
-	l.RateLimit(rec, req, (*router.Route)(nil))
+	l.RateLimit(rec, req)
 
 	if rec.Code != http.StatusTooManyRequests {
 		t.Fatalf("expected %d, got %d", http.StatusTooManyRequests, rec.Code)
@@ -90,7 +88,7 @@ func TestLimiterRateLimitExceeded(t *testing.T) {
 }
 
 func TestLimiterCleanup(t *testing.T) {
-	l := NewLimiter(2, 1, 0, 50*time.Millisecond)
+	l := NewLimiter(2, 1, 0, 50*time.Millisecond, 25*time.Millisecond)
 
 	addr := "127.0.0.1"
 	l.Allow(addr)

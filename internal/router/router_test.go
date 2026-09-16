@@ -52,6 +52,32 @@ func TestMatch(t *testing.T) {
 	}
 }
 
+func TestMatchLongestPrefix(t *testing.T) {
+	routes, _ := Build(config.Config{
+		Routes: []config.RouteConfig{
+			{
+				Path:     "/api",
+				Backends: []string{"http://localhost:8080"},
+			},
+			{
+				Path:     "/api/users",
+				Backends: []string{"http://localhost:8081"},
+			},
+		},
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/api/users/42", nil)
+
+	route, err := Match(routes, req)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if route == nil || route.Path != "/api/users" {
+		t.Fatalf("expected /api/users route, got %#v", route)
+	}
+}
+
 func TestMethodNotAllowed(t *testing.T) {
 	routes, _ := Build(config.Config{
 		Routes: []config.RouteConfig{

@@ -55,7 +55,7 @@ func TestGatewayProxyRequest(t *testing.T) {
 		Balancer: balancer.NewRoundRobin([]*backend.Backend{be}),
 	}
 
-	l := ratelimit.NewLimiter(32, 20, 5, time.Minute*10)
+	l := ratelimit.NewLimiter(32, 20, 5, time.Minute*10, time.Minute)
 	g := New([]*router.Route{route}, l)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/users", nil)
@@ -83,7 +83,7 @@ func TestGatewayStripPrefix(t *testing.T) {
 		Backends:    []*backend.Backend{be},
 		Balancer:    balancer.NewRoundRobin([]*backend.Backend{be}),
 	}
-	l := ratelimit.NewLimiter(32, 20, 5, time.Minute*10)
+	l := ratelimit.NewLimiter(32, 20, 5, time.Minute*10, time.Minute)
 
 	g := New([]*router.Route{route}, l)
 
