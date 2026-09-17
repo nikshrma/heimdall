@@ -4,6 +4,7 @@ package config
 import (
 	"errors"
 	"os"
+	"strconv"
 	"time"
 
 	"gopkg.in/yaml.v3"
@@ -27,6 +28,7 @@ type LimiterConfig struct {
 	CleanUpTime time.Duration `yaml:"cleanUpTime"`
 }
 type BreakerConfig struct {
+	Enabled          bool          `yaml:"enabled"`
 	FailureThreshold int32         `yaml:"failureThreshold"`
 	SuccessThreshold int32         `yaml:"successThreshold"`
 	Cooldown         time.Duration `yaml:"cooldown"`
@@ -65,6 +67,10 @@ func validateLimiterConfig(cfg *LimiterConfig) error {
 }
 
 func validateBreakerConfig(cfg *BreakerConfig) error {
+	if !cfg.Enabled {
+		return nil
+	}
+
 	if cfg.FailureThreshold <= 0 {
 		return errors.New("invalid breaker failureThreshold")
 	}
@@ -90,6 +96,18 @@ func Load(path string) (*Config, error) {
 	if err := yaml.Unmarshal(content, &cfg); err != nil {
 		return nil, err
 	}
+
+	if envVal := os.Getenv("BREAKER_ENABLED"); envVal != "" {
+		if val, err := strconv.ParseBool(envVal); err == nil {
+			cfg.BreakerVars.Enabled = val
+		}
+	}
+	if envVal := os.Getenv("RATE_LIMIT_ENABLED"); envVal != "" {
+		if val, err := strconv.ParseBool(envVal); err == nil {
+			cfg.LimiterVars.Enabled = val
+		}
+	}
+
 	if err := validateLimiterConfig(&cfg.LimiterVars); err != nil {
 		return nil, err
 	}

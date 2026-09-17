@@ -34,6 +34,10 @@ func (t *breakerTransport) RoundTrip(req *http.Request) (*http.Response, error) 
 	metrics.ProxyBackendInFlightRequests.WithLabelValues(t.b.URL().String()).Dec()
 	metrics.ProxyBackendRequestDuration.WithLabelValues(t.b.URL().String(), path).Observe(duration.Seconds())
 
+	if !t.b.enabled {
+		return resp, err
+	}
+
 	switch {
 	case err != nil:
 		log.Info().

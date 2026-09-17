@@ -5,8 +5,6 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
-	"os"
-	"strconv"
 	"sync/atomic"
 	"time"
 
@@ -23,6 +21,7 @@ const (
 )
 
 type BreakerConfig struct {
+	Enabled          bool
 	FailureThreshold int32
 	SuccessThreshold int32
 	Cooldown         time.Duration
@@ -30,6 +29,7 @@ type BreakerConfig struct {
 }
 
 var DefaultBreakerConfig = BreakerConfig{
+	Enabled:          true,
 	FailureThreshold: 3,
 	SuccessThreshold: 3,
 	Cooldown:         10 * time.Second,
@@ -75,10 +75,6 @@ func NewWithConfig(be string, cfg BreakerConfig) (*Backend, error) {
 			pr.SetXForwarded()
 		},
 	}
-	v, err := strconv.ParseBool(os.Getenv("BREAKER_ENABLED"))
-	if err != nil {
-		v = true
-	}
 	b := &Backend{
 		Proxy:            proxy,
 		url:              target,
@@ -86,7 +82,7 @@ func NewWithConfig(be string, cfg BreakerConfig) (*Backend, error) {
 		successThreshold: cfg.SuccessThreshold,
 		cooldown:         cfg.Cooldown,
 		slowThreshold:    cfg.SlowThreshold,
-		enabled:          v,
+		enabled:          cfg.Enabled,
 	}
 	proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
 		w.WriteHeader(http.StatusBadGateway)

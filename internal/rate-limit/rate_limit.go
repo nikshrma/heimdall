@@ -5,8 +5,6 @@ import (
 	"hash/fnv"
 	"net"
 	"net/http"
-	"os"
-	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -35,7 +33,7 @@ type shard struct {
 	buckets map[string]*bucket
 }
 
-func NewLimiter(numShards int, cap float64, refillRate int64, ttl time.Duration, cleanUpTime time.Duration) *Limiter {
+func NewLimiter(enabled bool, numShards int, cap float64, refillRate int64, ttl time.Duration, cleanUpTime time.Duration) *Limiter {
 	shards := make([]shard, numShards)
 	for i := range numShards {
 		shards[i].buckets = make(map[string]*bucket)
@@ -46,12 +44,8 @@ func NewLimiter(numShards int, cap float64, refillRate int64, ttl time.Duration,
 		refillRate:  float64(refillRate),
 		ttl:         ttl,
 		cleanUpTime: cleanUpTime,
+		enabled:     enabled,
 	}
-	v, err := strconv.ParseBool(os.Getenv("LIMITER_ENABLED"))
-	if err != nil {
-		v = true
-	}
-	l.enabled = v
 	go l.CleanUp()
 	return l
 }

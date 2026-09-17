@@ -34,6 +34,7 @@ type radixNode struct {
 func buildBackends(backends []string, cfg config.BreakerConfig) ([]*backend.Backend, error) {
 	var runtimeBackends []*backend.Backend
 	breakerCfg := backend.BreakerConfig{
+		Enabled:          cfg.Enabled,
 		FailureThreshold: cfg.FailureThreshold,
 		SuccessThreshold: cfg.SuccessThreshold,
 		Cooldown:         cfg.Cooldown,
