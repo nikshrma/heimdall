@@ -20,8 +20,12 @@ routes:
 limiter-conf:
   enabled: true
   shards: 32
-  capacity: 50
-  refillRate: 50
+  # k6/load-test.js runs 50 VUs with sleep(0.05), so the upper-bound demand is
+  # about 50 / 0.05 = 1000 req/s before request latency. A 350-token burst and
+  # 350 req/s refill target roughly 35% pass-through after the initial burst,
+  # making rate-limit-on runs partially throttled instead of nearly all 429s.
+  capacity: 350
+  refillRate: 350
   ttl: 2m
   cleanUpTime: 1m
 breaker-conf:
