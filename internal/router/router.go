@@ -31,10 +31,16 @@ type radixNode struct {
 	children []*radixNode
 }
 
-func buildBackends(backends []string) ([]*backend.Backend, error) {
+func buildBackends(backends []string, cfg config.BreakerConfig) ([]*backend.Backend, error) {
 	var runtimeBackends []*backend.Backend
+	breakerCfg := backend.BreakerConfig{
+		FailureThreshold: cfg.FailureThreshold,
+		SuccessThreshold: cfg.SuccessThreshold,
+		Cooldown:         cfg.Cooldown,
+		SlowThreshold:    cfg.SlowThreshold,
+	}
 	for _, be := range backends {
-		b, err := backend.New(be)
+		b, err := backend.NewWithConfig(be, breakerCfg)
 		if err != nil {
 			return nil, err
 		}
@@ -46,7 +52,7 @@ func buildBackends(backends []string) ([]*backend.Backend, error) {
 func Build(cfg config.Config) ([]*Route, error) {
 	var runtimeRoutes []*Route
 	for _, rc := range cfg.Routes {
-		backends, err := buildBackends(rc.Backends)
+		backends, err := buildBackends(rc.Backends, cfg.BreakerVars)
 		if err != nil {
 			return nil, err
 		}

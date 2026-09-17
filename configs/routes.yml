@@ -22,3 +22,9 @@ limiter-conf:
   capacity: 2000
   refillRate: 2000
   ttl: 2m
+  cleanUpTime: 1m
+breaker-conf:
+  failureThreshold: 3
+  successThreshold: 3
+  cooldown: 10s
+  slowThreshold: 3s

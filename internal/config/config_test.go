@@ -28,6 +28,18 @@ routes:
     backends:
       - http://im4:3004
       - http://im5:3005
+limiter-conf:
+  enabled: true
+  shards: 32
+  capacity: 2000
+  refillRate: 2000
+  ttl: 2m
+  cleanUpTime: 1m
+breaker-conf:
+  failureThreshold: 3
+  successThreshold: 3
+  cooldown: 10s
+  slowThreshold: 3s
 `), 0o644)
 	if err != nil {
 		t.Fatal(err)

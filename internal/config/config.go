@@ -26,11 +26,18 @@ type LimiterConfig struct {
 	TTL         time.Duration `yaml:"ttl"`
 	CleanUpTime time.Duration `yaml:"cleanUpTime"`
 }
+type BreakerConfig struct {
+	FailureThreshold int32         `yaml:"failureThreshold"`
+	SuccessThreshold int32         `yaml:"successThreshold"`
+	Cooldown         time.Duration `yaml:"cooldown"`
+	SlowThreshold    time.Duration `yaml:"slowThreshold"`
+}
 
 type Config struct {
 	Log         LogConfig     `yaml:"log"`
 	Routes      []RouteConfig `yaml:"routes"`
 	LimiterVars LimiterConfig `yaml:"limiter-conf"`
+	BreakerVars BreakerConfig `yaml:"breaker-conf"`
 }
 
 func validateLimiterConfig(cfg *LimiterConfig) error {
@@ -57,6 +64,23 @@ func validateLimiterConfig(cfg *LimiterConfig) error {
 	return nil
 }
 
+func validateBreakerConfig(cfg *BreakerConfig) error {
+	if cfg.FailureThreshold <= 0 {
+		return errors.New("invalid breaker failureThreshold")
+	}
+	if cfg.SuccessThreshold <= 0 {
+		return errors.New("invalid breaker successThreshold")
+	}
+	if cfg.Cooldown <= 0 {
+		return errors.New("invalid breaker cooldown")
+	}
+	if cfg.SlowThreshold <= 0 {
+		return errors.New("invalid breaker slowThreshold")
+	}
+
+	return nil
+}
+
 func Load(path string) (*Config, error) {
 	content, err := os.ReadFile(path)
 	if err != nil {
@@ -67,6 +91,9 @@ func Load(path string) (*Config, error) {
 		return nil, err
 	}
 	if err := validateLimiterConfig(&cfg.LimiterVars); err != nil {
+		return nil, err
+	}
+	if err := validateBreakerConfig(&cfg.BreakerVars); err != nil {
 		return nil, err
 	}
 	return &cfg, nil
