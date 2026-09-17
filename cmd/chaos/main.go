@@ -249,6 +249,7 @@ func main() {
 		durationFlag    float64
 		modeFlag        string
 		minAliveFlag    int
+		forceFlag       bool
 		logFileFlag     string
 		grafanaFlag     string
 	)
@@ -261,6 +262,7 @@ func main() {
 	flag.Float64Var(&durationFlag, "duration", 60.0, "Total duration of the chaos run in seconds (0 for indefinite)")
 	flag.StringVar(&modeFlag, "mode", "stop", "Chaos mode: 'stop' (stop/start) or 'pause' (pause/unpause)")
 	flag.IntVar(&minAliveFlag, "min-alive", 1, "Minimum number of targets that must remain active")
+	flag.BoolVar(&forceFlag, "force", false, "Force run even if min-alive >= number of targets")
 	flag.StringVar(&logFileFlag, "log-file", "chaos-events.jsonl", "Path to output structured JSONL event log")
 	flag.StringVar(&grafanaFlag, "grafana", "http://localhost:2999", "Grafana URL for pushing event annotations (empty to disable)")
 
@@ -305,6 +307,16 @@ func main() {
 		os.Exit(1)
 	}
 
+	if minAliveFlag >= len(targets) {
+		fmt.Printf("Warning: --min-alive (%d) is >= total number of targets (%d).\n"+
+			"Under this configuration, every kill operation will be skipped and the run will only idle or revive containers.\n",
+			minAliveFlag, len(targets))
+		if !forceFlag {
+			fmt.Println("Aborting run. Use --force to override and run anyway.")
+			os.Exit(1)
+		}
+	}
+
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
 		fmt.Printf("Failed to create Docker client: %v\n", err)
@@ -346,10 +358,11 @@ func main() {
 
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+	done := make(chan struct{})
 
 	go func() {
 		<-sigChan
-		runner.cleanupAndExit()
+		close(done)
 	}()
 
 	fmt.Printf("[Chaos] Starting chaos run (Targets: %v, Seed: %d, Mode: %s, MinAlive: %d)\n",
@@ -361,9 +374,17 @@ func main() {
 	startTime := time.Now()
 
 	for {
+		select {
+		case <-done:
+			runner.cleanupAndExit()
+			return
+		default:
+		}
+
 		if runner.duration > 0 && time.Since(startTime).Seconds() >= runner.duration {
 			fmt.Println("[Chaos] Duration reached.")
 			runner.cleanupAndExit()
+			return
 		}
 
 		target := runner.targets[runner.rng.Intn(len(runner.targets))]
@@ -401,12 +422,18 @@ func main() {
 			if remaining <= 0 {
 				fmt.Println("[Chaos] Duration reached.")
 				runner.cleanupAndExit()
+				return
 			}
 			if sleepDuration > remaining {
 				sleepDuration = remaining
 			}
 		}
 
-		time.Sleep(sleepDuration)
+		select {
+		case <-done:
+			runner.cleanupAndExit()
+			return
+		case <-time.After(sleepDuration):
+		}
 	}
 }
