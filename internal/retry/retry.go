@@ -3,6 +3,7 @@ package retry
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/nikshrma/heimdall/internal/backend"
 	"github.com/nikshrma/heimdall/internal/ctxkeys"
@@ -28,12 +29,14 @@ func Retry(w http.ResponseWriter, r *http.Request) {
 	p := NewPolicy()
 	excluded := make(map[*backend.Backend]struct{})
 	var lastBuffer *ResponseBuffer
+	retryCount := 0
 	for p.AttemptAgain() {
 		b := route.Balancer.Next(excluded)
 		if b == nil {
 			if lastBuffer != nil {
 				log.Warn().
 					Str("url", r.URL.Path).Msg("request failed: no backends available for retry")
+				setRetryCountHeader(lastBuffer, retryCount)
 				lastBuffer.WriteTo(w)
 				return
 			} else {
@@ -50,15 +53,18 @@ func Retry(w http.ResponseWriter, r *http.Request) {
 		if !ShouldRetryStatus(buffer.StatusCode()) {
 			log.Info().
 				Str("url", r.URL.Path).Str("backend", b.URL().String()).Msg("request complete")
+			setRetryCountHeader(buffer, retryCount)
 			buffer.WriteTo(w)
 			return
 		}
+		retryCount++
 		metrics.ProxyRetriesTotal.WithLabelValues(b.URL().String(), route.Path).Inc()
 		excluded[b] = struct{}{}
 	}
 	if lastBuffer != nil {
 		log.Warn().
 			Str("url", r.URL.Path).Msg("request failed: ran out of retry attempts")
+		setRetryCountHeader(lastBuffer, retryCount)
 		lastBuffer.WriteTo(w)
 		metrics.ProxyRequestsExhaustedRetriesTotal.WithLabelValues(route.Path).Inc()
 		return
@@ -67,5 +73,11 @@ func Retry(w http.ResponseWriter, r *http.Request) {
 			Str("url", r.URL.Path).Msg("request failed: bad gateway")
 		http.Error(w, "bad gateway", http.StatusBadGateway)
 		metrics.ProxyRequestsExhaustedRetriesTotal.WithLabelValues(route.Path).Inc()
+	}
+}
+
+func setRetryCountHeader(buffer *ResponseBuffer, retryCount int) {
+	if retryCount > 0 {
+		buffer.Header().Set("X-Retry-Count", strconv.Itoa(retryCount))
 	}
 }
