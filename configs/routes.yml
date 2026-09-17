@@ -16,14 +16,16 @@ routes:
     backends:
       - http://im4:3004
       - http://im5:3005
+      - http://im6:3006
 limiter-conf:
   enabled: true
   shards: 32
-  capacity: 2000
-  refillRate: 2000
+  capacity: 50
+  refillRate: 50
   ttl: 2m
   cleanUpTime: 1m
 breaker-conf:
+  enabled: true
   failureThreshold: 3
   successThreshold: 3
   cooldown: 10s

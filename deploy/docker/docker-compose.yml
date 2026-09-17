@@ -50,6 +50,13 @@ services:
       PORT: "3005"
       ENDPOINT: "GET /contacts"
 
+  im6:
+    image: dummy-heimdall-backend
+    environment:
+      NAME: "backend6"
+      PORT: "3006"
+      ENDPOINT: "GET /contacts"
+
   heimdall:
     image: heimdall
     build:
@@ -59,6 +66,7 @@ services:
       - "8080:8080"
     environment:
       BREAKER_ENABLED: "true"
+      RATE_LIMIT_ENABLED: "true"
     volumes:
       - ../../configs:/configs:ro
     depends_on:
@@ -67,6 +75,7 @@ services:
       - im3
       - im4
       - im5
+      - im6
     deploy:
       resources:
         limits:
